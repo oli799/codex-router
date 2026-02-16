@@ -1,6 +1,6 @@
 # Codex Router
 
-Switch between [Codex](https://github.com/openai/codex) accounts whithout leaving your terminal.
+Switch between [Codex](https://github.com/openai/codex) accounts without leaving your terminal.
 
 ## Install
 
