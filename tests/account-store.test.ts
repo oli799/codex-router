@@ -15,6 +15,7 @@ const {
   upsertAccount,
   loadAccount,
   listAccounts,
+  findAccountByAuth,
   removeAccount,
   validateAccountName,
   ensureAccountsDir,
@@ -168,14 +169,21 @@ describe("account-store", () => {
       const auth = makeFakeAuth("active");
       await saveAccount("my-account", auth);
 
-      const accounts = await listAccounts(auth.tokens.access_token);
+      const accounts = await listAccounts(auth);
       expect(accounts[0].isActive).toBe(true);
     });
 
     it("marks no account as active when token does not match", async () => {
       await saveAccount("other", makeFakeAuth("other"));
-      const accounts = await listAccounts("different-token");
+      const accounts = await listAccounts(makeFakeAuth("different"));
       expect(accounts[0].isActive).toBe(false);
+    });
+
+    it("marks active account when tokens rotated but account_id matches", async () => {
+      await saveAccount("personal", makeFakeAuth("old", { account_id: "acct-1" }));
+
+      const accounts = await listAccounts(makeFakeAuth("new", { account_id: "acct-1" }));
+      expect(accounts[0].isActive).toBe(true);
     });
 
     it("throws verbose error if an account file is malformed", async () => {
@@ -193,6 +201,30 @@ describe("account-store", () => {
       await expect(listAccounts(null)).rejects.toThrow(
         `Invalid account file "${badPath}"`
       );
+    });
+  });
+
+  describe("findAccountByAuth", () => {
+    it("returns matching account when access token matches", async () => {
+      const auth = makeFakeAuth("personal");
+      await saveAccount("personal", auth);
+
+      const match = await findAccountByAuth(auth);
+      expect(match?.name).toBe("personal");
+    });
+
+    it("returns matching account when tokens rotated but account_id matches", async () => {
+      await saveAccount("personal", makeFakeAuth("old", { account_id: "acct-1" }));
+
+      const match = await findAccountByAuth(makeFakeAuth("new", { account_id: "acct-1" }));
+      expect(match?.name).toBe("personal");
+    });
+
+    it("returns null when no account matches", async () => {
+      await saveAccount("personal", makeFakeAuth("personal", { account_id: "acct-1" }));
+
+      const match = await findAccountByAuth(makeFakeAuth("other", { account_id: "acct-2" }));
+      expect(match).toBeNull();
     });
   });
 

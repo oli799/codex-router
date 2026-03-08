@@ -16,6 +16,7 @@ npm install -g codex-router
 - Lists stored accounts and marks the currently active one.
 - Switches active account by rewriting `~/.codex/auth.json`.
 - Backs up the current auth file to `~/.codex/auth.json.bak` before every switch.
+- Saves the currently active account back to its stored slot before switching, so rotated refresh tokens are not lost.
 - Refreshes expired access tokens during switch (using the saved refresh token).
 
 ## Requirements

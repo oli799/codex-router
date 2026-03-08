@@ -49,6 +49,7 @@ function makeDeps(overrides: Partial<CliDeps> = {}): CliDeps {
       auth,
     })),
     listAccounts: vi.fn(async () => []),
+    findAccountByAuth: vi.fn(async () => null),
     removeAccount: vi.fn(async () => true),
     validateAccountName: vi.fn((name: string) => {
       if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
@@ -244,6 +245,31 @@ describe("runCli", () => {
     expect(deps.writeCodexAuth).toHaveBeenCalledWith(refreshed);
     expect(deps.upsertAccount).toHaveBeenCalledWith("personal", refreshed);
     expect(logs.at(-1)).toContain("tokens refreshed");
+  });
+
+  it("switch saves the currently active account before overwriting auth.json", async () => {
+    const activeAuth = makeFakeAuth("rotated", { account_id: "acct-personal" });
+    const targetAuth = makeFakeAuth("work", { account_id: "acct-work" });
+    const deps = makeDeps({
+      readCodexAuth: vi.fn(async () => activeAuth),
+      findAccountByAuth: vi.fn(async () => ({
+        name: "personal",
+        savedAt: new Date().toISOString(),
+        auth: makeFakeAuth("stale", { account_id: "acct-personal" }),
+      })),
+      loadAccount: vi.fn(async () => ({
+        name: "work",
+        savedAt: new Date().toISOString(),
+        auth: targetAuth,
+      })),
+    });
+    const { output } = makeOutput();
+
+    const code = await runCli(["switch", "work"], deps, output);
+
+    expect(code).toBe(0);
+    expect(deps.upsertAccount).toHaveBeenCalledWith("personal", activeAuth);
+    expect(deps.writeCodexAuth).toHaveBeenCalledWith(targetAuth);
   });
 
   it("switch fails when writing auth fails", async () => {

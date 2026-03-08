@@ -8,6 +8,7 @@ import {
   upsertAccount,
   loadAccount,
   listAccounts,
+  findAccountByAuth,
   removeAccount,
   validateAccountName,
 } from "./account-store.js";
@@ -20,6 +21,7 @@ export interface CliDeps {
   upsertAccount: typeof upsertAccount;
   loadAccount: typeof loadAccount;
   listAccounts: typeof listAccounts;
+  findAccountByAuth: typeof findAccountByAuth;
   removeAccount: typeof removeAccount;
   validateAccountName: typeof validateAccountName;
   refreshAuthIfExpired: typeof refreshAuthIfExpired;
@@ -37,6 +39,7 @@ const defaultDeps: CliDeps = {
   upsertAccount,
   loadAccount,
   listAccounts,
+  findAccountByAuth,
   removeAccount,
   validateAccountName,
   refreshAuthIfExpired,
@@ -86,8 +89,7 @@ function usage(output: CliOutput): number {
 
 async function cmdList(deps: CliDeps, output: CliOutput): Promise<number> {
   const currentAuth = await deps.readCodexAuth();
-  const currentToken = currentAuth?.tokens.access_token ?? null;
-  const accounts = await deps.listAccounts(currentToken);
+  const accounts = await deps.listAccounts(currentAuth);
 
   if (accounts.length === 0) {
     output.log("No saved accounts. Use `codex-router add <name>` to save your current account.");
@@ -164,6 +166,14 @@ async function cmdSwitch(name: string, deps: CliDeps, output: CliOutput): Promis
   } catch (err: unknown) {
     output.error(`Error: ${errorMessage(err)}`);
     return 1;
+  }
+
+  const currentAuth = await deps.readCodexAuth();
+  if (currentAuth) {
+    const currentAccount = await deps.findAccountByAuth(currentAuth);
+    if (currentAccount) {
+      await deps.upsertAccount(currentAccount.name, currentAuth);
+    }
   }
 
   const account = await deps.loadAccount(name);

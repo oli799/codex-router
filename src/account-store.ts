@@ -9,6 +9,7 @@ import {
 import { join } from "node:path";
 import { homedir } from "node:os";
 import type { CodexAuthFile, AccountMetadata, AccountSummary } from "./types.js";
+import { authsMatch } from "./auth-identity.js";
 
 const NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const PRIVATE_CREDENTIAL_FILE_MODE = 0o600;
@@ -114,7 +115,7 @@ export async function loadAccount(
 }
 
 export async function listAccounts(
-  currentAccessToken: string | null
+  currentAuth: CodexAuthFile | null
 ): Promise<AccountSummary[]> {
   await ensureAccountsDir();
 
@@ -132,13 +133,34 @@ export async function listAccounts(
     results.push({
       name: meta.name,
       savedAt: meta.savedAt,
-      isActive:
-        currentAccessToken !== null &&
-        meta.auth.tokens.access_token === currentAccessToken,
+      isActive: currentAuth !== null && authsMatch(meta.auth, currentAuth),
     });
   }
 
   return results.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function findAccountByAuth(
+  auth: CodexAuthFile
+): Promise<AccountMetadata | null> {
+  await ensureAccountsDir();
+
+  const dir = accountsDir();
+  const files = await readdir(dir);
+
+  for (const file of files) {
+    if (!file.endsWith(".json")) continue;
+
+    const path = join(dir, file);
+    const raw = await readFile(path, "utf-8");
+    const meta = parseAccountMetadata(raw, path);
+
+    if (authsMatch(meta.auth, auth)) {
+      return meta;
+    }
+  }
+
+  return null;
 }
 
 export async function removeAccount(name: string): Promise<boolean> {
