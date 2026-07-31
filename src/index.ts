@@ -173,6 +173,12 @@ async function cmdSwitch(name: string, deps: CliDeps, output: CliOutput): Promis
     const currentAccount = await deps.findAccountByAuth(currentAuth);
     if (currentAccount) {
       await deps.upsertAccount(currentAccount.name, currentAuth);
+    } else {
+      output.log(
+        "Warning: the current account is not saved. " +
+          "It will only be preserved in ~/.codex/auth.json.bak — " +
+          "run `codex-router add <name>` to save it."
+      );
     }
   }
 

@@ -272,6 +272,19 @@ describe("runCli", () => {
     expect(deps.writeCodexAuth).toHaveBeenCalledWith(targetAuth);
   });
 
+  it("switch warns when the current account is not saved", async () => {
+    const deps = makeDeps({
+      findAccountByAuth: vi.fn(async () => null),
+    });
+    const { output, logs } = makeOutput();
+
+    const code = await runCli(["switch", "personal"], deps, output);
+
+    expect(code).toBe(0);
+    expect(deps.upsertAccount).not.toHaveBeenCalled();
+    expect(logs.some((line) => line.includes("not saved"))).toBe(true);
+  });
+
   it("switch fails when writing auth fails", async () => {
     const deps = makeDeps({
       writeCodexAuth: vi.fn(async () => {
