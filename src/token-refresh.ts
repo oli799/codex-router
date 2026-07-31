@@ -1,24 +1,9 @@
 import type { CodexAuthFile, TokenRefreshResult } from "./types.js";
+import { decodeJwtPayload } from "./jwt.js";
 
 const AUTH0_TOKEN_URL = "https://auth.openai.com/oauth/token";
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
 const EXPIRY_GRACE_SECONDS = 60;
-
-/**
- * Decode the payload of a JWT without verifying signature.
- * Returns null if the token is not a valid 3-part JWT.
- */
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-
-  try {
-    const payload = Buffer.from(parts[1], "base64url").toString("utf-8");
-    return JSON.parse(payload) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Check whether the access_token in an auth file has expired (or will expire within grace period).
