@@ -30,6 +30,7 @@ function makeAuth(accessToken: string): CodexAuthFile {
 
 describe("token-refresh", () => {
   beforeEach(() => {
+    fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
   });
 

@@ -54,34 +54,6 @@ export function validateAccountName(name: string): void {
   }
 }
 
-export async function saveAccount(
-  name: string,
-  auth: CodexAuthFile
-): Promise<void> {
-  validateAccountName(name);
-  await ensureAccountsDir();
-
-  const path = accountPath(name);
-  try {
-    await readFile(path, "utf-8");
-    throw new Error(
-      `Account "${name}" already exists. Remove it first with \`codex-router remove ${name}\`.`
-    );
-  } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw err;
-    }
-  }
-
-  const metadata: AccountMetadata = {
-    name,
-    savedAt: new Date().toISOString(),
-    auth,
-  };
-
-  await writeAccountFile(path, metadata);
-}
-
 export async function upsertAccount(
   name: string,
   auth: CodexAuthFile

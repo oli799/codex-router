@@ -1,16 +1,5 @@
 import type { CodexAuthFile } from "./types.js";
-
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-
-  try {
-    const payload = Buffer.from(parts[1], "base64url").toString("utf-8");
-    return JSON.parse(payload) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
+import { decodeJwtPayload } from "./jwt.js";
 
 function jwtSubject(token: string): string | null {
   const payload = decodeJwtPayload(token);
