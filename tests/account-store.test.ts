@@ -11,7 +11,6 @@ vi.mock("node:os", async () => {
 });
 
 const {
-  saveAccount,
   upsertAccount,
   loadAccount,
   listAccounts,
@@ -48,30 +47,9 @@ describe("account-store", () => {
     });
   });
 
-  describe("saveAccount", () => {
-    it("saves account to disk", async () => {
-      const auth = makeFakeAuth();
-      await saveAccount("test-account", auth);
-
-      const loaded = await loadAccount("test-account");
-      expect(loaded).not.toBeNull();
-      expect(loaded!.name).toBe("test-account");
-      expect(loaded!.auth).toEqual(auth);
-      expect(loaded!.savedAt).toBeTruthy();
-    });
-
-    it("rejects duplicate names", async () => {
-      const auth = makeFakeAuth();
-      await saveAccount("dup", auth);
-      await expect(saveAccount("dup", auth)).rejects.toThrow("already exists");
-    });
-
-    it("rejects invalid names", async () => {
-      await expect(saveAccount("", makeFakeAuth())).rejects.toThrow();
-    });
-
+  describe("upsertAccount", () => {
     it("writes account file with private permissions", async () => {
-      await saveAccount("private-account", makeFakeAuth());
+      await upsertAccount("private-account", makeFakeAuth());
 
       const path = join(
         state.tmpDir,
@@ -82,9 +60,7 @@ describe("account-store", () => {
       const result = await stat(path);
       expect(result.mode & 0o777).toBe(0o600);
     });
-  });
 
-  describe("upsertAccount", () => {
     it("creates new account when missing", async () => {
       const auth = makeFakeAuth("first");
       await upsertAccount("upserted", auth);
@@ -95,7 +71,7 @@ describe("account-store", () => {
     });
 
     it("overwrites existing account", async () => {
-      await saveAccount("upserted", makeFakeAuth("old"));
+      await upsertAccount("upserted", makeFakeAuth("old"));
       await upsertAccount("upserted", makeFakeAuth("new"));
 
       const loaded = await loadAccount("upserted");
@@ -125,7 +101,7 @@ describe("account-store", () => {
 
     it("loads a previously saved account", async () => {
       const auth = makeFakeAuth("load");
-      await saveAccount("load-test", auth);
+      await upsertAccount("load-test", auth);
 
       const loaded = await loadAccount("load-test");
       expect(loaded!.auth.tokens.access_token).toBe("fake-access-token-load");
@@ -156,9 +132,9 @@ describe("account-store", () => {
     });
 
     it("lists all saved accounts sorted by name", async () => {
-      await saveAccount("charlie", makeFakeAuth("c"));
-      await saveAccount("alice", makeFakeAuth("a"));
-      await saveAccount("bob", makeFakeAuth("b"));
+      await upsertAccount("charlie", makeFakeAuth("c"));
+      await upsertAccount("alice", makeFakeAuth("a"));
+      await upsertAccount("bob", makeFakeAuth("b"));
 
       const accounts = await listAccounts(null);
       expect(accounts).toHaveLength(3);
@@ -167,20 +143,20 @@ describe("account-store", () => {
 
     it("marks active account correctly", async () => {
       const auth = makeFakeAuth("active");
-      await saveAccount("my-account", auth);
+      await upsertAccount("my-account", auth);
 
       const accounts = await listAccounts(auth);
       expect(accounts[0].isActive).toBe(true);
     });
 
     it("marks no account as active when token does not match", async () => {
-      await saveAccount("other", makeFakeAuth("other"));
+      await upsertAccount("other", makeFakeAuth("other"));
       const accounts = await listAccounts(makeFakeAuth("different"));
       expect(accounts[0].isActive).toBe(false);
     });
 
     it("marks active account when tokens rotated but account_id matches", async () => {
-      await saveAccount("personal", makeFakeAuth("old", { account_id: "acct-1" }));
+      await upsertAccount("personal", makeFakeAuth("old", { account_id: "acct-1" }));
 
       const accounts = await listAccounts(makeFakeAuth("new", { account_id: "acct-1" }));
       expect(accounts[0].isActive).toBe(true);
@@ -207,21 +183,21 @@ describe("account-store", () => {
   describe("findAccountByAuth", () => {
     it("returns matching account when access token matches", async () => {
       const auth = makeFakeAuth("personal");
-      await saveAccount("personal", auth);
+      await upsertAccount("personal", auth);
 
       const match = await findAccountByAuth(auth);
       expect(match?.name).toBe("personal");
     });
 
     it("returns matching account when tokens rotated but account_id matches", async () => {
-      await saveAccount("personal", makeFakeAuth("old", { account_id: "acct-1" }));
+      await upsertAccount("personal", makeFakeAuth("old", { account_id: "acct-1" }));
 
       const match = await findAccountByAuth(makeFakeAuth("new", { account_id: "acct-1" }));
       expect(match?.name).toBe("personal");
     });
 
     it("returns null when no account matches", async () => {
-      await saveAccount("personal", makeFakeAuth("personal", { account_id: "acct-1" }));
+      await upsertAccount("personal", makeFakeAuth("personal", { account_id: "acct-1" }));
 
       const match = await findAccountByAuth(makeFakeAuth("other", { account_id: "acct-2" }));
       expect(match).toBeNull();
@@ -230,7 +206,7 @@ describe("account-store", () => {
 
   describe("removeAccount", () => {
     it("removes existing account and returns true", async () => {
-      await saveAccount("to-remove", makeFakeAuth());
+      await upsertAccount("to-remove", makeFakeAuth());
       const removed = await removeAccount("to-remove");
       expect(removed).toBe(true);
 
